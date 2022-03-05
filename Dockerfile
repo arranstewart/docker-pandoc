@@ -1,4 +1,4 @@
-FROM debian:sid
+FROM ubuntu:xenial
 MAINTAINER Arran Stewart <arran.stewart@uwa.edu.au>
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -18,18 +18,26 @@ ENV LANG=en_US.UTF-8 \
 RUN apt-get update && \
   apt-get install -y -o Acquire::Retries=10 --no-install-recommends \
     fontconfig \
+    fonts-texgyre \
     ghostscript \
     imagemagick \
+    latexmk \
     lmodern \
     ps2eps \
     psutils \
     python-pygments \
     texlive-bibtex-extra \
     texlive-fonts-extra \
+    texlive-fonts-recommended \
     texlive-font-utils \
     texlive-latex-base \
     texlive-latex-extra \
+    texlive-latex-recommended \
     texlive-luatex \
+    texlive-math-extra \
+    texlive-pictures \
+    texlive-pstricks \
+    texlive-publishers  \
     texlive-science \
     texlive-xetex \
     wget && \
@@ -42,11 +50,16 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 
+
+
+
+
 RUN \
   wget --no-check-certificate https://github.com/jgm/pandoc/releases/download/2.2.1/pandoc-2.2.1-1-amd64.deb && \
     dpkg -i pandoc* && \
     rm pandoc* && \
     apt-get clean
+
 
 RUN mkdir /data
 WORKDIR /data
