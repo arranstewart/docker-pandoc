@@ -1,4 +1,4 @@
-FROM ubuntu:xenial@sha256:8ae9bafbb64f63a50caab98fd3a5e37b3eb837a3e0780b78e5218e63193961f9
+FROM ubuntu:20.04@sha256:8ae9bafbb64f63a50caab98fd3a5e37b3eb837a3e0780b78e5218e63193961f9
 MAINTAINER Arran Stewart <arran.stewart@uwa.edu.au>
 
 RUN \
@@ -37,6 +37,8 @@ RUN apt-get update && \
       inkscape                      \
       latexmk                       \
       lmodern                       \
+      m4                            \
+      make                          \
       ps2eps                        \
       pstoedit                      \
       pstotext                      \
@@ -66,7 +68,7 @@ RUN apt-get update && \
 
 ARG PANDOC_VERSION=2.17.1.1
 ARG PANDOC_DEB=pandoc-${PANDOC_VERSION}-amd64.deb
-ARG PANDOC_URL=https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-amd64.deb
+ARG PANDOC_URL=https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb
 
 RUN \
   cd /tmp && \
