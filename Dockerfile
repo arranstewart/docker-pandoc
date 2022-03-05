@@ -111,25 +111,19 @@ USER ${USER_NAME}
 ENV HOME=/home/${USER_NAME}
 ENV PATH=/home/${USER_NAME}/.local/bin:$PATH
 
-#RUN \
-#  pip3 install --user --upgrade pip pweave
-#
-#ARG NONFREE_FONTS_INSTALLER_URL=https://www.tug.org/fonts/getnonfreefonts/install-getnonfreefonts
-#
-#RUN : "install LaTeX non free fronts" && \
-#  curl -L -o /tmp/install-getnonfreefonts "$NONFREE_FONTS_INSTALLER_URL" && \
-#  chmod a+rx /tmp/install-getnonfreefonts && \
-#  sudo /tmp/install-getnonfreefonts && \
-#  sudo getnonfreefonts --sys --all && \
-#  sudo rm -rf /tmp/*
-#
-#RUN : "install python docutils" && \
-#  sudo apt-get update && \
-#  sudo apt-get install -y --no-install-recommends python3-docutils && \
-#  # Remove more unnecessary stuff
-#  sudo apt-get autoclean && \
-#  sudo apt-get clean -y && \
-#  sudo apt-get --purge -y autoremove && \
-#  sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-#
-#
+COPY requirements.txt /tmp/
+
+RUN \
+  pip3 install --user --upgrade pip==22.0.3 && \
+  pip3 install -r /tmp/requirements.txt     && \
+  sudo rm -rf /tmp/requirements.txt
+
+ARG NONFREE_FONTS_INSTALLER_URL=https://www.tug.org/fonts/getnonfreefonts/install-getnonfreefonts
+
+RUN : "install LaTeX non free fronts" && \
+  curl -L -o /tmp/install-getnonfreefonts "$NONFREE_FONTS_INSTALLER_URL" && \
+  chmod a+rx /tmp/install-getnonfreefonts && \
+  sudo /tmp/install-getnonfreefonts && \
+  sudo getnonfreefonts --sys --all && \
+  sudo rm -rf /tmp/*
+

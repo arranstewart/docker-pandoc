@@ -1,30 +1,22 @@
-# Docker container with Pandoc, PdfTex, XeLaTeX and LuaTeX installed
+# Docker container with Pandoc, PdfTex, and image-conversion tools installed
 
 [![Build Status][build-img]][build-status]
 [![Docker Image][docker-pulls-img]][docker_repo]
 [![License][license]][license_link]
 
-A Docker container with [`Pandoc`](http://pandoc.org/) and [`LaTeX`](https://www.latex-project.org)
-(plus some image processing tools) installed.
+A Docker image based on Ubuntu 20.04, with software installed including:
 
-```
-$ docker run --rm -v `pwd`:/data adstewart/pandoc
-```
+- [Pandoc](http://pandoc.org/)
+- [LaTeX](https://www.latex-project.org)
+- [xcftools](https://github.com/j-jorge/xcftools/)
+- [Inkscape](https://inkscape.org)
+- [Pweave](https://github.com/mpastell/Pweave)
+- [ImageMagick](https://imagemagick.org/)
+- [Librsvg](https://wiki.gnome.org/Projects/LibRsvg)
+- [LibreOffice Writer](https://www.libreoffice.org/discover/writer/)
+- [Poppler utils](https://poppler.freedesktop.org)
 
----
-
-## Example
-Generate HTML from Markdown
-```
-$ docker run --rm -v `pwd`:/data adstewart/pandoc -o example.html example.md
-```
----
-Generate PDF from Markdown
-```
-$ docker run --rm -v `pwd`:/data adstewart/pandoc -o example.html example.md
-```
-
----
+----
 
 ## Credits
 

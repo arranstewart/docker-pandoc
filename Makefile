@@ -43,6 +43,5 @@ docker-shell:
 		--name $(CTR_NAME) \
 		-v $$HOME/dev/:/home/dev \
 		-v $$PWD:/work --workdir=/work \
-		--entrypoint sh \
 		$(REPO)/$(IMAGE_NAME):$(IMAGE_VERSION)
 
