@@ -7,6 +7,7 @@ RUN \
     ca-certificates   \
     curl              \
     locales           \
+    sudo              \
     wget && \
   echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
   locale-gen en_US.utf8 && \
@@ -73,7 +74,22 @@ ARG PANDOC_URL=https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}
 RUN \
   cd /tmp && \
   wget --no-check-certificate ${PANDOC_URL} && \
-  sudo apt install --no-install-recommends tmp/${PANDOC_DEB} && \
+  apt install --no-install-recommends tmp/${PANDOC_DEB} && \
   rm * && \
   apt-get clean
+
+ARG USER_NAME=user
+ARG USER_ID=1001
+ARG USER_GID=1001
+
+RUN : "adding user" && \
+  set -x; \
+  addgroup --gid ${USER_GID} ${USER_NAME} && \
+  adduser --home /home/${USER_NAME} --disabled-password --shell /bin/bash \
+      --gid ${USER_GID} --uid ${USER_ID} --gecos '' ${USER_NAME} && \
+  echo "%${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER ${USER_NAME}
+ENV HOME=/home/${USER_NAME}
+
 
