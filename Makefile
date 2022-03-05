@@ -31,6 +31,7 @@ print-docker-hub-image:
 
 docker-build:
 	docker build \
+		--cache-from $(REPO)/$(IMAGE_NAME):$(IMAGE_VERSION) \
 		-f Dockerfile \
 		-t $(REPO)/$(IMAGE_NAME):$(IMAGE_VERSION) .
 

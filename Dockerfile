@@ -27,24 +27,31 @@ ENV LANG=en_US.UTF-8 \
 RUN apt-get update && \
   DEBIAN_FRONTEND=noninteractive \
     apt-get install -y -o Acquire::Retries=10 --no-install-recommends \
+      default-jre \
       epix                          \
       epstool                       \
       fontconfig                    \
       fonts-texgyre                 \
       ghostscript                   \
+      git                           \
       graphviz                      \
       groff                         \
       imagemagick                   \
       inkscape                      \
       latexmk                       \
+      librsvg2-bin                  \
+      libreoffice-java-common       \
+      libreoffice-writer            \
       lmodern                       \
       m4                            \
       make                          \
+      poppler-utils                 \
       ps2eps                        \
       pstoedit                      \
       pstotext                      \
       psutils                       \
       python-pygments               \
+      python3-pip                   \
       texlive-bibtex-extra          \
       texlive-fonts-extra           \
       texlive-fonts-recommended     \
@@ -58,7 +65,9 @@ RUN apt-get update && \
       texlive-publishers            \
       texlive-science               \
       texlive-xetex                 \
-      transfig && \
+      transfig                      \
+      unzip                         \
+      xcftools && \
   # Removing doc packages after installing to reduce size
   apt-get --purge remove -y .\*-doc$ && \
   # Remove more unnecessary stuff
@@ -68,8 +77,24 @@ RUN apt-get update && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ARG PANDOC_VERSION=2.17.1.1
-ARG PANDOC_DEB=pandoc-${PANDOC_VERSION}-amd64.deb
-ARG PANDOC_URL=https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb
+ARG PANDOC_DEB=pandoc-${PANDOC_VERSION}-1-amd64.deb
+ARG PANDOC_URL=https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/${PANDOC_DEB}
+
+RUN \
+  cd /tmp && \
+  wget ${PANDOC_URL} && \
+  apt install $PWD/${PANDOC_DEB} && \
+  rm * && \
+  apt-get clean && \
+  apt-get autoclean && \
+  apt-get clean -y && \
+  apt-get --purge -y autoremove && \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# allow imagemagick conversions
+# (see https://stackoverflow.com/questions/52998331/imagemagick-security-policy-pdf-blocking-conversion)
+RUN \
+  sed -i '/^  <policy domain="coder"/ s/none/read|write/;' /etc/ImageMagick-6/policy.xml
 
 #RUN \
 #  cd /tmp && \
