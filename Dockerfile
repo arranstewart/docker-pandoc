@@ -5,12 +5,28 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
   apt-get install -y -o Acquire::Retries=10 --no-install-recommends \
+    locales
+
+RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
+   && locale-gen en_US.utf8 \
+   && /usr/sbin/update-locale LANG=en_US.UTF-8
+
+ENV LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8
+
+RUN apt-get update && \
+  apt-get install -y -o Acquire::Retries=10 --no-install-recommends \
     fontconfig \
+    ghostscript \
+    imagemagick \
     lmodern \
-    locales \
+    ps2eps \
+    psutils \
     python-pygments \
     texlive-bibtex-extra \
     texlive-fonts-extra \
+    texlive-font-utils \
     texlive-latex-base \
     texlive-latex-extra \
     texlive-luatex \
@@ -31,12 +47,6 @@ RUN \
     dpkg -i pandoc* && \
     rm pandoc* && \
     apt-get clean
-
-# Set the locale
-RUN dpkg-reconfigure locales
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
 
 RUN mkdir /data
 WORKDIR /data
