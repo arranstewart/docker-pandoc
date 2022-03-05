@@ -1,0 +1,32 @@
+
+name: build-push
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.dockerignore'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.dockerignore'
+  release:
+    types:
+      - created
+
+env:
+  REGISTRY: ghcr.io
+  DOCKER_HUB_OWNER: adstewart
+
+jobs:
+  docker_build:
+    name: docker build
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+        name: Check out code
+
+
