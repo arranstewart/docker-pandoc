@@ -60,6 +60,16 @@ RUN \
     rm pandoc* && \
     apt-get clean
 
+RUN apt-get update && \
+  apt-get install -y -o Acquire::Retries=10 --no-install-recommends \
+	  epix         \
+	  epstool      \
+    graphviz     \
+	  groff        \
+	  pstoedit     \
+	  pstotext     \
+	  transfig
+
 
 RUN mkdir /data
 WORKDIR /data
