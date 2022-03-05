@@ -71,25 +71,25 @@ ARG PANDOC_VERSION=2.17.1.1
 ARG PANDOC_DEB=pandoc-${PANDOC_VERSION}-amd64.deb
 ARG PANDOC_URL=https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb
 
-RUN \
-  cd /tmp && \
-  wget --no-check-certificate ${PANDOC_URL} && \
-  apt install --no-install-recommends tmp/${PANDOC_DEB} && \
-  rm * && \
-  apt-get clean
-
-ARG USER_NAME=user
-ARG USER_ID=1001
-ARG USER_GID=1001
-
-RUN : "adding user" && \
-  set -x; \
-  addgroup --gid ${USER_GID} ${USER_NAME} && \
-  adduser --home /home/${USER_NAME} --disabled-password --shell /bin/bash \
-      --gid ${USER_GID} --uid ${USER_ID} --gecos '' ${USER_NAME} && \
-  echo "%${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
-USER ${USER_NAME}
-ENV HOME=/home/${USER_NAME}
-
-
+#RUN \
+#  cd /tmp && \
+#  wget --no-check-certificate ${PANDOC_URL} && \
+#  apt install --no-install-recommends /tmp/${PANDOC_DEB} && \
+#  rm * && \
+#  apt-get clean
+#
+#ARG USER_NAME=user
+#ARG USER_ID=1001
+#ARG USER_GID=1001
+#
+#RUN : "adding user" && \
+#  set -x; \
+#  addgroup --gid ${USER_GID} ${USER_NAME} && \
+#  adduser --home /home/${USER_NAME} --disabled-password --shell /bin/bash \
+#      --gid ${USER_GID} --uid ${USER_ID} --gecos '' ${USER_NAME} && \
+#  echo "%${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+#
+#USER ${USER_NAME}
+#ENV HOME=/home/${USER_NAME}
+#
+#
