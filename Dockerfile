@@ -52,6 +52,7 @@ RUN apt-get update && \
       psutils                       \
       python-pygments               \
       python3-pip                   \
+      python3-docutils              \
       texlive-bibtex-extra          \
       texlive-fonts-extra           \
       texlive-fonts-recommended     \
@@ -84,7 +85,7 @@ RUN \
   cd /tmp && \
   wget ${PANDOC_URL} && \
   apt install $PWD/${PANDOC_DEB} && \
-  rm * && \
+  rm pan* && \
   apt-get clean && \
   apt-get autoclean && \
   apt-get clean -y && \
@@ -96,25 +97,39 @@ RUN \
 RUN \
   sed -i '/^  <policy domain="coder"/ s/none/read|write/;' /etc/ImageMagick-6/policy.xml
 
+ARG USER_NAME=user
+ARG USER_ID=1001
+ARG USER_GID=1001
+
+RUN \
+  addgroup --gid ${USER_GID} ${USER_NAME} && \
+  adduser --home /home/${USER_NAME} --disabled-password --shell /bin/bash --gid ${USER_GID} --uid ${USER_ID} --gecos '' ${USER_NAME} && \
+  echo "%${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER ${USER_NAME}
+
+ENV HOME=/home/${USER_NAME}
+ENV PATH=/home/${USER_NAME}/.local/bin:$PATH
+
 #RUN \
-#  cd /tmp && \
-#  wget --no-check-certificate ${PANDOC_URL} && \
-#  apt install --no-install-recommends /tmp/${PANDOC_DEB} && \
-#  rm * && \
-#  apt-get clean
+#  pip3 install --user --upgrade pip pweave
 #
-#ARG USER_NAME=user
-#ARG USER_ID=1001
-#ARG USER_GID=1001
+#ARG NONFREE_FONTS_INSTALLER_URL=https://www.tug.org/fonts/getnonfreefonts/install-getnonfreefonts
 #
-#RUN : "adding user" && \
-#  set -x; \
-#  addgroup --gid ${USER_GID} ${USER_NAME} && \
-#  adduser --home /home/${USER_NAME} --disabled-password --shell /bin/bash \
-#      --gid ${USER_GID} --uid ${USER_ID} --gecos '' ${USER_NAME} && \
-#  echo "%${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+#RUN : "install LaTeX non free fronts" && \
+#  curl -L -o /tmp/install-getnonfreefonts "$NONFREE_FONTS_INSTALLER_URL" && \
+#  chmod a+rx /tmp/install-getnonfreefonts && \
+#  sudo /tmp/install-getnonfreefonts && \
+#  sudo getnonfreefonts --sys --all && \
+#  sudo rm -rf /tmp/*
 #
-#USER ${USER_NAME}
-#ENV HOME=/home/${USER_NAME}
+#RUN : "install python docutils" && \
+#  sudo apt-get update && \
+#  sudo apt-get install -y --no-install-recommends python3-docutils && \
+#  # Remove more unnecessary stuff
+#  sudo apt-get autoclean && \
+#  sudo apt-get clean -y && \
+#  sudo apt-get --purge -y autoremove && \
+#  sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 #
 #
