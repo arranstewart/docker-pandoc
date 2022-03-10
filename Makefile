@@ -14,7 +14,7 @@ REPO=adstewart
 
 IMAGE_NAME=pandoc
 
-IMAGE_VERSION=0.6
+IMAGE_VERSION=0.7
 
 CTR_NAME=pandoc-ctr
 
