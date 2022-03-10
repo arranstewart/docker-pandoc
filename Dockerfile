@@ -127,3 +127,9 @@ RUN : "install LaTeX non free fronts" && \
   sudo getnonfreefonts --sys --all && \
   sudo rm -rf /tmp/*
 
+ARG P2_URL=https://github.com/wrouesnel/p2cli/releases/download/r11/p2-linux-x86_64
+
+RUN : "install p2" && \
+  curl -L -o ~/.local/bin/p2 "$P2_URL" && \
+  chmod a+rx ~/.local/bin/p2
+
