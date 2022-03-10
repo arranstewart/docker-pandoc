@@ -57,8 +57,10 @@ def verbose_run(cmd, **kwargs):
 
 #cmd = ["docker", "pull", f"{gh_image_id}:{version}-builder"]
 #verbose_run(cmd, check=False)
-cmd = ["docker", "pull", f"{gh_image_id}:{version}"]
-verbose_run(cmd, check=False)
+
+for tag in [version, "latest"]:
+  cmd = ["docker", "pull", f"{gh_image_id}:{tag}"]
+  verbose_run(cmd, check=False)
 
 ## builder image
 #cmd = f"""docker build --pull -f Dockerfile --target builder
@@ -71,6 +73,7 @@ verbose_run(cmd, check=False)
 cmd = f"""docker build --pull -f Dockerfile
   --cache-from {gh_image_id}:{version}-builder
   --cache-from {gh_image_id}:{version}
+  --cache-from {gh_image_id}:latest
   -t {gh_image_id}:{version}""".split()
 
 # build up --label args
