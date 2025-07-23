@@ -1,4 +1,4 @@
-FROM ubuntu:20.04@sha256:8ae9bafbb64f63a50caab98fd3a5e37b3eb837a3e0780b78e5218e63193961f9
+FROM ubuntu:20.04
 MAINTAINER Arran Stewart <arran.stewart@uwa.edu.au>
 
 RUN \
@@ -30,6 +30,7 @@ RUN apt-get update && \
       default-jre \
       epix                          \
       epstool                       \
+      file                          \
       fontconfig                    \
       fonts-texgyre                 \
       ghostscript                   \
@@ -77,20 +78,29 @@ RUN apt-get update && \
   apt-get --purge -y autoremove && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN \
+  pdflatex --version
+
+ARG TARGETARCH
 ARG PANDOC_VERSION=2.17.1.1
-ARG PANDOC_DEB=pandoc-${PANDOC_VERSION}-1-amd64.deb
+ARG PANDOC_DEB=pandoc-${PANDOC_VERSION}-1-${TARGETARCH}.deb
 ARG PANDOC_URL=https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/${PANDOC_DEB}
+# e.g. `https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-1-amd64.deb`
 
 RUN \
   cd /tmp && \
-  wget ${PANDOC_URL} && \
-  apt install $PWD/${PANDOC_DEB} && \
-  rm pan* && \
+  wget -O tmp.deb ${PANDOC_URL} && \
+  apt install $PWD/tmp.deb && \
+  rm tmp.deb && \
   apt-get clean && \
   apt-get autoclean && \
   apt-get clean -y && \
   apt-get --purge -y autoremove && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN \
+  pandoc --version && \
+  file `which pandoc`
 
 # allow imagemagick conversions
 # (see https://stackoverflow.com/questions/52998331/imagemagick-security-policy-pdf-blocking-conversion)
@@ -127,9 +137,12 @@ RUN : "install LaTeX non free fronts" && \
   sudo getnonfreefonts --sys --all && \
   sudo rm -rf /tmp/*
 
-ARG P2_URL=https://github.com/wrouesnel/p2cli/releases/download/r11/p2-linux-x86_64
+ARG P2_URLPREFIX=https://github.com/wrouesnel/p2cli/releases/download/r13
 
 RUN : "install p2" && \
-  curl -L -o ~/.local/bin/p2 "$P2_URL" && \
-  chmod a+rx ~/.local/bin/p2
+  set -eux; \
+  ARCH_SUFFIX="x86_64"; \
+  [ "$TARGETARCH" = "arm64" ] && ARCH_SUFFIX="arm64"; \
+  curl -fsSL "$P2_URLPREFIX/p2-linux-${ARCH_SUFFIX}" -o $HOME/.local/bin/p2 && \
+  chmod a+rx $HOME/.local/bin/p2
 

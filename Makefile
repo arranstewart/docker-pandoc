@@ -8,40 +8,52 @@ SHELL=bash
 default:
 	echo pass
 
-# vars for docker
+METADATA_FILE := METADATA.env
 
-REPO=adstewart
+# e.g. adstewart
+IMAGE_NAMESPACE := $(shell grep '^IMAGE_NAMESPACE=' $(METADATA_FILE) | cut -d= -f2-)
 
-IMAGE_NAME=pandoc
+# e.g. 0.7
+IMAGE_VERSION := $(shell grep '^IMAGE_VERSION=' $(METADATA_FILE) | cut -d= -f2-)
 
-IMAGE_VERSION=0.7
+# e.g. pandoc
+IMAGE_NAME    := $(shell grep '^IMAGE_NAME=' $(METADATA_FILE) | cut -d= -f2-)
 
-CTR_NAME=pandoc-ctr
 
-# targets
 
-print-image-name:
-	@echo $(IMAGE_NAME)
+# quick and dirty build
 
-print-image-version:
-	@echo $(IMAGE_VERSION)
+PLATFORMS = linux/amd64,linux/arm64
+#PLATFORMS = linux/amd64
 
-print-docker-hub-image:
-	@printf '%s' "$(REPO)/$(IMAGE_NAME)"
 
+# uses the builder `multiarch-builder` - we assume
+# it's been created as per the README.
 docker-build:
-	docker build \
-		--cache-from $(REPO)/$(IMAGE_NAME):$(IMAGE_VERSION) \
+	docker buildx build \
+		--progress=plain \
+		--builder=multiarch-builder \
+		--cache-from $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_VERSION) \
+		--platform $(PLATFORMS) \
 		-f Dockerfile \
-		-t $(REPO)/$(IMAGE_NAME):$(IMAGE_VERSION) .
+		-t $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_VERSION) \
+		-t $(IMAGE_NAMESPACE)/$(IMAGE_NAME):latest \
+		--push \
+		.
 
-REMOVE_AFTER=--rm
+CTR_NAME = pandoc-ctr
+
+REMOVE_AFTER = --rm
+
+#PLATFORM_TO_RUN = linux/amd64
+PLATFORM_TO_RUN = linux/arm64
 
 docker-shell:
 	-docker rm -f $(CTR_NAME)
 	docker -D run $(REMOVE_AFTER) -it \
 		--name $(CTR_NAME) \
+		--platform $(PLATFORM_TO_RUN) \
 		-v $$HOME/dev/:/home/dev \
 		-v $$PWD:/work --workdir=/work \
-		$(REPO)/$(IMAGE_NAME):$(IMAGE_VERSION)
+		$(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_VERSION)
 

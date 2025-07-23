@@ -25,127 +25,108 @@ env:
 jobs:
   docker_build:
     name: docker build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
         name: Check out code
 
-      - name: set docker image info
-        id: info
-        shell: bash
-        run: |
-          set -x
-          IMAGE_NAME=$(make print-image-name)
-          IMAGE_VERSION=$(make print-image-version)
-          echo "::set-output name=IMAGE_NAME::${IMAGE_NAME}"
-          echo "::set-output name=IMAGE_VERSION::${IMAGE_VERSION}"
-
-      - name: check info ok
-        run: |
-          IMAGE_NAME="${{ steps.info.outputs.IMAGE_NAME }}"
-          printf 'IMAGE_NAME is: <<%s>>\n' "${IMAGE_NAME}"
-          if [ -z ${IMAGE_NAME} ]; then
-            false
-          fi
-
-          IMAGE_VERSION="${{ steps.info.outputs.IMAGE_VERSION }}"
-          printf 'IMAGE_VERSION is: <<%s>>\n' "${IMAGE_VERSION}"
-          if [ -z ${IMAGE_VERSION} ]; then
-            false
-          fi
-
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Log in to github Container registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+      - name: Set up docker+QEMU (for emulation support)
+        uses: docker/setup-qemu-action@v3
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          platforms: linux/amd64,linux/arm64
 
-      - name: Build Docker image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Load version
+        id: version
         shell: bash
         run: |
-          set -x
+          source METADATA.env
+          echo "version=$IMAGE_VERSION" >> "$GITHUB_OUTPUT"
 
-          export IMAGE_NAME="${{ steps.info.outputs.IMAGE_NAME }}"
-          export GH_IMAGE_ID="${{ env.REGISTRY }}/${{ github.repository }}/${{ steps.info.outputs.IMAGE_NAME }}"
-          export IMAGE_VERSION="${{ steps.info.outputs.IMAGE_VERSION }}"
-          export REPO_OWNER="${{ github.repository_owner }}"
+      - name: test version
+        run: |
+          echo "${{ steps.version.outputs.version }}"
 
-          echo "${{ steps.meta.outputs.labels }}" > oc_labels
-          # "
-
-          python3 ./build.py
-
-      - name: push to github registry
-        if: github.event_name != 'pull_request'
+      - name: Generate image labels
+        id: metadata
         shell: bash
         run: |
-          set -x
-          set -euo pipefail
+          # our python script output gets sent to labels.txt
+          # the syntax for storing this content so its accessible in later steps uses shell-like
+          # EOF syntax.
+          # See <https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-output-parameter>
+          # and <https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#example-of-a-multiline-string>
+          python3 print_docker_metadata.py > labels.txt
+          {
+            echo 'labels<<EOF'
+            cat labels.txt
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
-          GH_IMAGE_ID=${{ env.REGISTRY }}/${{ github.repository }}/${{ steps.info.outputs.IMAGE_NAME }}
-          IMAGE_VERSION=${{ steps.info.outputs.IMAGE_VERSION }}
 
-          docker push ${GH_IMAGE_ID}:${IMAGE_VERSION}
-          docker tag ${GH_IMAGE_ID}:${IMAGE_VERSION} ${GH_IMAGE_ID}:latest
-          docker push ${GH_IMAGE_ID}:latest
-
-      - name: push to docker registry on version tags
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
+      - name: test image labels
         run: |
-          set -x
-          set -euo pipefail
+          printf '%q\n' "${{ steps.metadata.outputs.labels }}"
 
-          GH_IMAGE_ID="${{ env.REGISTRY }}/${{ github.repository }}/${{ steps.info.outputs.IMAGE_NAME }}"
-          DOCKER_IMAGE_ID="docker.io/${{ env.DOCKER_HUB_OWNER }}/${{ steps.info.outputs.IMAGE_NAME }}"
-          IMAGE_VERSION=${{ steps.info.outputs.IMAGE_VERSION }}
 
-          docker tag ${GH_IMAGE_ID}:${IMAGE_VERSION}  ${DOCKER_IMAGE_ID}:${IMAGE_VERSION}
-          docker push ${DOCKER_IMAGE_ID}:${IMAGE_VERSION}
-          docker tag ${GH_IMAGE_ID}:latest  ${DOCKER_IMAGE_ID}:latest
-          docker push ${DOCKER_IMAGE_ID}:latest
-          # "
+      - name: Build and push (multi-arch, with cache and labels)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          #platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
+          tags: |
+            adstewart/pandoc:latest
+            ghcr.io/arranstewart/docker-pandoc:latest
+            adstewart/pandoc:${{ steps.version.outputs.version }}
+            ghcr.io/arranstewart/docker-pandoc:${{ steps.version.outputs.version }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/arranstewart/docker-pandoc:buildcache
+          cache-to: type=registry,ref=ghcr.io/arranstewart/docker-pandoc:buildcache,mode=max
 
-      - name: create release
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          set -x
 
-          ref_name='${{github.ref_name}}'
-          version="${ref_name:1}" # strip leading 'v'
 
-          # download github-release tool
-          github_rel_url="https://github.com/github-release/github-release/releases/download/v0.10.0/linux-amd64-github-release.bz2"
-          curl -L "${github_rel_url}" | bunzip2 > github-release
-          chmod a+rx ./github-release
+      #- name: create release
+      #  if: startsWith(github.ref, 'refs/tags/v')
+      #  run: |
+      #    set -x
 
-          export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          IFS='/' read repo_user repo_name  <<<$(echo "${{github.repository}}")
+      #    ref_name='${{github.ref_name}}'
+      #    version="${ref_name:1}" # strip leading 'v'
 
-          ./github-release release \
-              --user $repo_user \
-              --repo $repo_name \
-              --tag ${{github.ref_name}} \
-              --name "Version $version" \
-              --description "See the changelog for a detailed list of changes" \
-              --draft
+      #    # download github-release tool
+      #    github_rel_url="https://github.com/github-release/github-release/releases/download/v0.10.0/linux-amd64-github-release.bz2"
+      #    curl -L "${github_rel_url}" | bunzip2 > github-release
+      #    chmod a+rx ./github-release
+
+      #    export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+      #    IFS='/' read repo_user repo_name  <<<$(echo "${{github.repository}}")
+
+      #    ./github-release release \
+      #        --user $repo_user \
+      #        --repo $repo_name \
+      #        --tag ${{github.ref_name}} \
+      #        --name "Version $version" \
+      #        --description "See the changelog for a detailed list of changes" \
+      #        --draft
 
