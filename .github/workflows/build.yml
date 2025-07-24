@@ -86,6 +86,22 @@ jobs:
         run: |
           printf '%q\n' "${{ steps.metadata.outputs.labels }}"
 
+      - name: Generate image tags
+        id: tags
+        shell: bash
+        run: |
+          {
+            echo 'tags<<EOF'
+            for version in "${{ steps.version.outputs.version }}" latest; do
+              printf 'adstewart/pandoc:%s\n' "$version";
+              printf 'ghcr.io/arranstewart/docker-pandoc/pandoc:%s\n' "$version";
+            done
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: test image tags
+        run: |
+          printf '%q\n' "${{ steps.tags.outputs.tags }}"
 
       - name: Build and push (multi-arch, with cache and labels)
         uses: docker/build-push-action@v5
@@ -93,13 +109,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          #platforms: linux/amd64,linux/arm64
-          platforms: linux/amd64
-          tags: |
-            adstewart/pandoc:latest
-            ghcr.io/arranstewart/docker-pandoc:latest
-            adstewart/pandoc:${{ steps.version.outputs.version }}
-            ghcr.io/arranstewart/docker-pandoc:${{ steps.version.outputs.version }}
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tags.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=registry,ref=ghcr.io/arranstewart/docker-pandoc:buildcache
           cache-to: type=registry,ref=ghcr.io/arranstewart/docker-pandoc:buildcache,mode=max
@@ -129,4 +140,137 @@ jobs:
       #        --name "Version $version" \
       #        --description "See the changelog for a detailed list of changes" \
       #        --draft
+
+  test-multiarch:
+    needs: docker_build
+    runs-on: ubuntu-latest
+    #if: startsWith(github.ref, 'refs/tags/')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [linux/amd64, linux/arm64]
+
+    steps:
+      - uses: actions/checkout@v2
+        name: Check out code
+
+      - name: Set up docker+QEMU (for emulation support)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Load version
+        id: version
+        shell: bash
+        run: |
+          source METADATA.env
+          echo "version=$IMAGE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: test version
+        run: |
+          echo "${{ steps.version.outputs.version }}"
+
+      - name: Run container tests
+        run: |
+          echo "Running test for platform: ${{ matrix.arch }}"
+          set -x
+
+          image_path=$(python3 ./print_image_path.py)
+          echo "using image path '$image_path'"
+
+          docker pull --platform=${{ matrix.arch }} "$image_path"
+
+          python3 tests/test_image.py ${{ matrix.arch }}
+
+  test-macos-arm64-image:
+    needs: docker_build
+    runs-on: macos-14
+    #if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - uses: actions/checkout@v2
+        name: Check out code
+
+      - name: Show architecture
+        shell: bash
+        run: |
+          set -x
+
+          arch=`uname -m`
+          echo "architecture from uname -m: ${arch}"
+
+          # Should be 'arm64'
+          if [ "$arch" != "arm64" ]; then
+            echo "This job expects to run on an arm64 (Apple Silicon) runner." >&2
+            exit 1
+          fi
+
+      - name: Print GitHub runner platform and architecture
+        shell: bash
+        run: |
+          echo "runner.os: ${{ runner.os }}"
+          echo "runner.arch: ${{ runner.arch }}"
+
+      - name: install docker
+        shell: bash
+        run: |
+          set -x
+
+          brew install \
+            colima            \
+            docker            \
+            docker-compose    \
+            qemu
+
+          # see https://github.com/abiosoft/colima/issues/970#issuecomment-2298154164
+          # example of use at https://github.com/mikekazakov/nimble-commander/blob/df0a21832d7fa9f0a1e98525ce0b1c2af011ff7d/.github/workflows/build.yml#L46
+          LIMACTL_PATH=$(brew --prefix)/bin/limactl
+          sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl
+          sudo chmod +x $LIMACTL_PATH
+          colima start --network-address --arch arm64 --vm-type=qemu
+
+          colima_config_dir="$HOME/.colima/"
+
+          if [ -d $colima_config_dir ]; then
+            echo "looking for contents of colima config dir $colima_config_file"
+            config_files=$(find $colima_config_dir -type f -name '*yaml')
+            for file in $config_files; do
+              printf '\n\n[-] conts of "%s":\n' "${file}"
+              cat "$file" | grep -n ^
+            done
+          else
+            echo "no such colima config dir $colima_config_dir":
+          fi
+
+      - name: Pull arm64 image
+        shell: bash
+        run: |
+          set -x
+
+          image_path=$(python3 ./print_image_path.py)
+          echo "using image path '$image_path'"
+
+          platform="linux/$(uname -m)"
+
+          docker -D pull --platform="${platform}" "$image_path"
+
+          docker -D run --rm --platform="${platform}" "$image_path" pandoc --version
+          docker -D run --rm --platform="${platform}" "$image_path" pdflatex --version
+
+      - name: Run container tests
+        shell: bash
+        run: |
+          echo "Running test for platform: ${{ matrix.arch }}"
+          set -x
+
+          platform="linux/$(uname -m)"
+
+          image_path=$(python3 ./print_image_path.py)
+          echo "using image path '$image_path'"
+
+          python3 tests/test_image.py "${platform}"
 

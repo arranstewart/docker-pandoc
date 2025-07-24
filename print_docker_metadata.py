@@ -4,87 +4,29 @@
 print docker metadata to stdout
 """
 
+# pylint: disable=subprocess-run-check
+
 import os
 import subprocess
 import sys
 
 from datetime import datetime, timezone
 
-# pylint: disable=subprocess-run-check
+from os.path import (
+  abspath,
+  join,
+  dirname,
+)
 
-def verbose_run(*cmd, **kwargs):
-  "run a command verbosely"
+lib_dir = abspath(join(dirname(__file__), 'lib'))
+sys.path.insert(0, lib_dir)
 
-  print("running: ", *cmd, file=sys.stderr)
-  sys.stderr.flush()
-  sys.stdout.flush()
-  return subprocess.run(*cmd, **kwargs)
-
-def load_metadata_env(filename="METADATA.env"):
-  """
-  read in an env file.
-
-  we expect it will probably have UPPERCASE_NAMES, we dupe
-  them as lowercase as well because why not
-  """
-
-  metadata: dict[str,str] = {}
-  with open(filename, encoding="utf8") as ifp:
-    for line in ifp:
-      line = line.strip()
-      if not line or line.startswith('#'):
-        continue
-      if '=' not in line:
-        raise ValueError(f"Malformed line: {line}")
-      key, value = line.split('=', 1)
-
-      key = key.strip()
-      value = value.strip().strip('"').strip("'")
-
-      metadata[key] = value
-      metadata[key.lower()] = value
-  return metadata
-
-
-def generate_more_metadata():
-  """
-  extract more metadata from environment
-  """
-
-  metadata = {}
-  metadata["date"] = datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
-
-  result = verbose_run(
-    ["git", "rev-parse", "HEAD"],
-    capture_output=True,
-    text=True,
-    check=True
-  )
-  metadata["git_commit"] = result.stdout.strip()
-
-  return metadata
-
-def get_github_metadata():
-  """
-  return data about the repository, if we're running
-  a github actions pipeline
-  """
-
-  gh_metadata = {}
-
-  if os.environ.get("GITHUB_ACTIONS") == "true":
-    gh_metadata["is-github"] = "true"
-
-    # we expect this to be 'https://github.com':
-    gh_metadata["server-url"] = os.environ["GITHUB_SERVER_URL"]
-
-    # we expect this to be something like 'arranstewart/docker-pandoc':
-    gh_metadata["repo"] = os.environ["GITHUB_REPOSITORY"]
-
-    # we expect this to be ghcr.io or similar
-    gh_metadata["registry"] = os.environ["REGISTRY"]
-
-  return gh_metadata
+from utils import (
+  generate_more_metadata,
+  get_github_metadata,
+  load_metadata_env,
+  verbose_run,
+)
 
 def main():
   "main"
@@ -102,7 +44,8 @@ def main():
   ]
 
   for exp_label in expected_labels:
-    assert exp_label in metadata, f"Expected to see label {exp_label} in metadata, but did not: {metadata}"
+    assert exp_label in metadata, \
+           f"Expected to see label {exp_label} in metadata, but did not: {metadata}"
 
   more_metadata = generate_more_metadata()
   print("more metadata:", more_metadata, "\n\n", file=sys.stderr)

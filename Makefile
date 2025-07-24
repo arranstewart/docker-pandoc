@@ -23,8 +23,8 @@ IMAGE_NAME    := $(shell grep '^IMAGE_NAME=' $(METADATA_FILE) | cut -d= -f2-)
 
 # quick and dirty build
 
-PLATFORMS = linux/amd64,linux/arm64
-#PLATFORMS = linux/amd64
+TARGET_PLATFORMS = linux/amd64,linux/arm64
+#TARGET_PLATFORMS = linux/amd64
 
 
 # uses the builder `multiarch-builder` - we assume
@@ -34,7 +34,7 @@ docker-build:
 		--progress=plain \
 		--builder=multiarch-builder \
 		--cache-from $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_VERSION) \
-		--platform $(PLATFORMS) \
+		--platform $(TARGET_PLATFORMS) \
 		-f Dockerfile \
 		-t $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_VERSION) \
 		-t $(IMAGE_NAMESPACE)/$(IMAGE_NAME):latest \
@@ -45,15 +45,20 @@ CTR_NAME = pandoc-ctr
 
 REMOVE_AFTER = --rm
 
-#PLATFORM_TO_RUN = linux/amd64
-PLATFORM_TO_RUN = linux/arm64
+#PLATFORM = linux/amd64
+PLATFORM = linux/arm64
 
 docker-shell:
 	-docker rm -f $(CTR_NAME)
 	docker -D run $(REMOVE_AFTER) -it \
 		--name $(CTR_NAME) \
-		--platform $(PLATFORM_TO_RUN) \
+		--platform $(PLATFORM) \
 		-v $$HOME/dev/:/home/dev \
 		-v $$PWD:/work --workdir=/work \
 		$(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_VERSION)
+
+test:
+	python3 ./tests/test_image.py $(PLATFORM)
+
+	
 
